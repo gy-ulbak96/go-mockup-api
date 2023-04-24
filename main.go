@@ -9,12 +9,13 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	// "time"
+	"fmt"
 )
 
 type server struct {
 	Id string `json:"id"`
 	Name string `json:"name"`
+	Ip string `json:"ip"`
 }
 
 type lb struct {
@@ -26,8 +27,7 @@ type lb struct {
 }
 
 type Endpoint struct {
-  Id string `json:"id"`
-	Server []server `json:"server"`
+	Server []string `json:"server"`
 	Lbport int `json:"lbport"`
 	Serverport int `json:"serverport"`
 }
@@ -35,6 +35,7 @@ type Endpoint struct {
 var servers = make(map[string]server)
 var lbs = make(map[string]lb)
 var lbs_recent []string
+var servers_recent []string
 
 
 func main() {
@@ -48,8 +49,7 @@ func main() {
 	router.POST("/lbs", postLB)
 	router.GET("/lbs", getLBlist)
 	router.GET("/lbs/:uuid", getLB)
-	// router.POST("/lbs/:uuid", postLBBind)
-	// router.POST("/lbs/:uuid/update", updateLBBind)
+	router.POST("/lbs/:uuid", postLBBind)
 	router.DELETE("/lbs/:uuid", deleteLB)
 	router.Run("localhost:8080")
 }
@@ -74,7 +74,16 @@ func postServer(c *gin.Context) {
 	vmId := vmName + "-" + strconv.Itoa(rand.Intn(max-min)+min)
 	newServer.Id = vmId
 	newServer.Name = vmName
+	serverip := ""
+	if len(servers) == 0 {
+		serverip = "172.0.0.1"
+	}	else {
+		recentserver := servers_recent[len(servers)-1]
+	  serverip, _ = NextIP(recentserver)
+	}
+	newServer.Ip = serverip
 	servers[vmId] = newServer
+	servers_recent = append(servers_recent, serverip)
 	c.IndentedJSON(http.StatusCreated, newServer)
 }
 
@@ -134,8 +143,6 @@ func postLB(c *gin.Context) {
 	if len(lbs) == 0 {
 		lbVip = "192.0.0.1"
 	}	else {
-		//invalid operation: cannot slice lbs (variable of type map[string]lb) > cuz map has no order
-		// recentlb := lbs[:len(lbs)-1]
 		recentlb := lbs_recent[len(lbs)-1]
 	  lbVip, _ = NextIP(recentlb)
 	}
@@ -196,25 +203,76 @@ func getLB(c *gin.Context) {
 }
 
 func postLBBind(c *gin.Context) {
-	var newEndpoint endpoint
 	body := c.Request.Body
 	value, err := io.ReadAll(body)
 	if err != nil {
 		log.Printf("%+v", err.Error())
 		return
 	}
+
+	id := c.Param("uuid")
 	var data map[string]interface{}
-  id := c.Param("uuid")
+	json.Unmarshal([]byte(value), &data)
+	
+
+	var serverlist []string
+	for _, element := range data["serverlist"].([]interface{}){
+		serverlist = append(serverlist,fmt.Sprintf("%v", element))
+	}
+	lbport,_ := strconv.Atoi(data["lbport"].(string))
+	serverport,_ := strconv.Atoi(data["serverport"].(string))
+	  
+	for _,serverval := range serverlist {
+		if len(servers) == 0{
+			c.IndentedJSON(http.StatusNotFound, gin.H{"message": "You didn't make any servers"})
+			return
+		}
+		exists := false
+    for _, server := range servers {
+        if server.Ip == serverval {
+            exists = true
+            break
+        }
+    }
+    if !exists {
+        message := fmt.Sprintf("You didn't make this server %v", serverval)
+        c.IndentedJSON(http.StatusNotFound, gin.H{"message": message})
+        return
+    }
+	}
+
+	if len(lbs) == 0{
+		c.IndentedJSON(http.StatusNotFound, gin.H{"message": "You didn't make any lbs"})
+		return
+	}
+
+	exists := false
 	for key, val := range lbs {
 		if key == id {
-
+			exists = true
+			log.Printf("%T, %v, %T, %v",serverlist, serverlist ,lbport, lbport)
+			val.Endpoint.Server = serverlist
+			val.Endpoint.Lbport = lbport
+			val.Endpoint.Serverport = serverport
+			lbs[key] = val
+			c.IndentedJSON(http.StatusOK, val)
+		} 
+		if !exists {
+			message := fmt.Sprintf("LB that have such uuid %v don't exist", id)
+			c.IndentedJSON(http.StatusNotFound, gin.H{"message": message})
+			return
 		}
 	}
+
+	c.JSON(http.StatusOK, gin.H{
+	"serverlist": data["serverlist"],
+	"lbport": data["lbport"],
+	"serverport": data["serverport"],
+	})
+  
 }
 
-// func updateLBBind(c *gin.Context) {
-
-// }
+	
 
 func deleteLB(c *gin.Context) {
 	id := c.Param("uuid")
