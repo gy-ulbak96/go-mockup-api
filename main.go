@@ -79,7 +79,11 @@ func postServer(c *gin.Context) {
 		serverip = "172.0.0.1"
 	}	else {
 		recentserver := servers_recent[len(servers)-1]
-	  serverip, _ = NextIP(recentserver)
+	  serverip, err = NextIP(recentserver)
+		if err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "There is no allocatable IP"})
+			return
+		}
 	}
 	newServer.Ip = serverip
 	servers[vmId] = newServer
@@ -144,7 +148,11 @@ func postLB(c *gin.Context) {
 		lbVip = "192.0.0.1"
 	}	else {
 		recentlb := lbs_recent[len(lbs)-1]
-	  lbVip, _ = NextIP(recentlb)
+	  lbVip, err = NextIP(recentlb)
+		if err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "There is no allocatable IP"})
+			return
+		}
 	}
 	newLB.Id = lbId
 	newLB.Name = lbName
@@ -164,28 +172,28 @@ func NextIP(ip_whole string) (string, error) {
   for i, v := range ip_parts_s {
     ip_parts[i], _ = strconv.Atoi(v)
   }
-	for i, _ := range ip_parts {
-    if ip_parts[3-i] == 255 {
-			if ip_parts[2-i] == 255{
-				continue
-			}	else {
-				ip_parts[2-i] += 1
-				j := 3-i
-				for j < 4 {
-					ip_parts[j] = 0
-					j += 1
-				}	
-			}
-		} else {
-      ip_parts[3-i] += 1
+	for i := len(ip_parts) - 1; i >= 0; i--{
+		if ip_parts[i] < 255 {
+      ip_parts[i] += 1
+			break
 		}
+    ip_parts[i] = 0
+		if i == 0 {
+			return "",fmt.Errorf("an error occurred")
+		}
+    ip_parts[i-1] += 1	
+		if ip_parts[i-1] < 255{
+			break
+		}
+		
 	}
 	for i, v := range ip_parts {
-    ip_parts_s[i] = strconv.Itoa(v)
+  	ip_parts_s[i] = strconv.Itoa(v)
   }
   ip_whole = strings.Join(ip_parts_s, ".")
 	return ip_whole, nil
 }
+
 
 func getLBlist(c *gin.Context) {
   c.IndentedJSON(http.StatusOK, lbs)
