@@ -1,0 +1,54 @@
+nodes:
+- address: 172.21.16.235
+  role:
+  - controlplane
+  - worker
+  - etcd
+  user: centos
+- address: 172.21.14.132
+  role:
+  - controlplane
+  - worker
+  - etcd
+  user: centos
+- address: 172.21.16.67
+  role:
+  - controlplane
+  - worker
+  - etcd
+  user: centos
+services:
+  etcd:
+    snapshot: true
+    retention: 24h
+    creation: 6h
+ingress:
+  provider: nginx
+  options:
+    use-forwarded-headers: "true"
+kubernetes_version: "v1.19.16-rancher1-1"
+
+
+
+
+curl --location --request POST 'http://localhost:8080/lbs' \
+--header 'Content-Type: application/json' \
+--data '{
+    "name": "test3",
+    "protocol": "http"
+}'
+
+
+curl --location --request GET 'http://localhost:8080/lbs' 
+
+
+curl --location --request POST 'http://localhost:8080/lbs/test3-24055' \
+--header 'Content-Type: application/json' \
+--data '{
+    "serverlist": ["127.0.0.1", "15.4.4.4"],
+    "lbport": "3",
+    "serverport": "5"
+}'
+
+
+
