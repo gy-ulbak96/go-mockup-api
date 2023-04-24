@@ -34,21 +34,43 @@ kubernetes_version: "v1.19.16-rancher1-1"
 curl --location --request POST 'http://localhost:8080/lbs' \
 --header 'Content-Type: application/json' \
 --data '{
-    "name": "test3",
+    "name": "test",
     "protocol": "http"
 }'
+
+curl --location --request POST 'http://localhost:8080/servers' \
+--header 'Content-Type: application/json' \
+--data '{
+  "name": "test"
+}'
+
 
 
 curl --location --request GET 'http://localhost:8080/lbs' 
 
+curl --location --request GET 'http://localhost:8080/lbs/test-96183' 
 
-curl --location --request POST 'http://localhost:8080/lbs/test3-24055' \
+curl --location --request GET 'http://localhost:8080/servers' 
+curl --location --request GET 'http://localhost:8080/servers/test-89197' 
+curl --location --request DELETE 'http://localhost:8080/servers/test-89197' 
+
+curl --location --request DELETE 'http://localhost:8080/lbs/test-74570' 
+
+
+curl --location --request POST 'http://localhost:8080/lbs/test-16711' \
 --header 'Content-Type: application/json' \
 --data '{
-    "serverlist": ["127.0.0.1", "15.4.4.4"],
+    "serverlist": ["172.0.0.3","172.0.0.2"],
+    "lbport": "80",
+    "serverport": "80"
+}'
+
+curl --location --request POST 'http://localhost:8080/lbs/test3-45699' \
+--header 'Content-Type: application/json' \
+--data '{
+    "serverlist": ["172.0.0.1", "173.1.1.2"],
     "lbport": "3",
     "serverport": "5"
 }'
-
 
 
