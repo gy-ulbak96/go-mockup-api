@@ -112,7 +112,7 @@ func deleteServer(c *gin.Context) {
 			return
 		}
 	}
-	c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Internal server error"})
+	c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "There is no such Server"})
 }
 
 // About LB
@@ -257,12 +257,13 @@ func postLBBind(c *gin.Context) {
 			lbs[key] = val
 			c.IndentedJSON(http.StatusOK, val)
 		} 
-		if !exists {
-			message := fmt.Sprintf("LB that have such uuid %v don't exist", id)
-			c.IndentedJSON(http.StatusNotFound, gin.H{"message": message})
-			return
-		}
 	}
+	if !exists {
+		message := fmt.Sprintf("LB that have such uuid %v don't exist", id)
+		c.IndentedJSON(http.StatusNotFound, gin.H{"message": message})
+		return
+	}
+	
 
 	c.JSON(http.StatusOK, gin.H{
 	"serverlist": data["serverlist"],
