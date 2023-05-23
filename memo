@@ -50,5 +50,6 @@ curl --location --request POST 'http://localhost:8080/lbs/test3-24055' \
     "serverport": "5"
 }'
 
+curl --location --request GET 'http://localhost:8080/api/v1/namespaces/test-namespace/releases/test-chart'
 
 
